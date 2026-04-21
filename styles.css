@@ -449,3 +449,39 @@ input[type="range"]::-webkit-slider-thumb {
     padding: 6px 12px;
   }
 }
+/* slider reset button */
+.slider-reset {
+  background: #3e2f54;
+  border: 1px solid #7a629b;
+  color: #fad87c;
+  font-weight: bold;
+  font-size: 1rem;
+  width: 28px;
+  height: 28px;
+  border-radius: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #1f1629;
+  transition: all 0.1s;
+  line-height: 1;
+  padding: 0;
+}
+.slider-reset:hover {
+  background: #5b4275;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 0 #1f1629;
+}
+.slider-reset:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #1f1629;
+}
+
+/* adjust slider header spacing */
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
