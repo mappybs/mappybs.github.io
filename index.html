@@ -3,32 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brawl Stars · Map Crafter</title>
+    <title>MappyBS - Brawl Stars Map Maker</title>
     <!-- polished external styles -->
     <link rel="stylesheet" href="styles.css">
+    <!-- background removal library (UMD) -->
+    <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal-js@1.4.5/dist/background-removal.umd.min.js"></script>
 </head>
 <body>
 <div class="app">
     <header class="app-header">
         <h1>
             <span class="title-icon">⚡</span>
-            Brawl Stars Map Maker
-            <span class="title-badge">color → asset clustering</span>
+            MappyBS
+            <span class="title-badge">Brawl Stars Map Maker from Image</span>
         </h1>
         <div class="header-underline"></div>
     </header>
 
     <div class="main-panel">
-        <!-- LEFT: canvas + all action buttons (now grouped under image) -->
+        <!-- LEFT: canvas + all action buttons -->
         <div class="left-col">
             <div class="preview-card">
                 <div class="canvas-wrapper">
                     <canvas id="previewCanvas" width="400" height="400"></canvas>
                 </div>
 
-                <!-- ALL BUTTONS MOVED HERE — directly under canvas -->
+                <!-- BUTTON BAR — realtime, no "apply filters" button -->
                 <div class="action-bar">
-                    <!-- upload trigger (styled as button) -->
                     <label for="fileInput" class="btn btn-upload">
                         <span class="btn-icon">📁</span> Upload
                     </label>
@@ -38,11 +39,14 @@
                         <button class="btn btn-secondary" id="resetImageBtn">
                             <span class="btn-icon">⟲</span> Reset
                         </button>
+                        <button class="btn btn-accent" id="removeBgBtn">
+                            <span class="btn-icon">✂️</span> Remove BG
+                        </button>
+                        <button class="btn btn-secondary" id="undoBtn">
+                            <span class="btn-icon">↩️</span> Undo
+                        </button>
                         <button class="btn btn-primary" id="generateMapBtn">
                             <span class="btn-icon">🎮</span> Generate map
-                        </button>
-                        <button class="btn btn-accent" id="applyFiltersBtn">
-                            <span class="btn-icon">✨</span> Apply filters
                         </button>
                         <button class="btn btn-success" id="downloadMapBtn" disabled>
                             <span class="btn-icon">⬇</span> Download
@@ -50,14 +54,14 @@
                     </div>
                 </div>
 
-                <!-- image info / stats (cleaner) -->
+                <!-- image info / stats -->
                 <div id="imageInfo" class="image-stats">
                     <span class="stat-badge">📌 No image loaded — upload or use default stickman</span>
                 </div>
             </div>
         </div>
 
-        <!-- RIGHT: sliders & tuning panel -->
+        <!-- RIGHT: sliders & tuning panel (with reset buttons) -->
         <div class="right-col">
             <div class="tuning-panel">
                 <h3 class="panel-title">
@@ -68,7 +72,10 @@
                 <div class="slider-card">
                     <div class="slider-header">
                         <label for="brightness">🔆 Brightness</label>
-                        <span id="brightVal" class="slider-value">0%</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="brightVal" class="slider-value">0%</span>
+                            <button class="slider-reset" data-slider="brightness" data-default="0">↺</button>
+                        </div>
                     </div>
                     <input type="range" id="brightness" min="-100" max="100" value="0" step="1">
                 </div>
@@ -76,7 +83,10 @@
                 <div class="slider-card">
                     <div class="slider-header">
                         <label for="contrast">◑ Contrast</label>
-                        <span id="contrastVal" class="slider-value">0%</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="contrastVal" class="slider-value">0%</span>
+                            <button class="slider-reset" data-slider="contrast" data-default="0">↺</button>
+                        </div>
                     </div>
                     <input type="range" id="contrast" min="-100" max="100" value="0" step="1">
                 </div>
@@ -84,7 +94,10 @@
                 <div class="slider-card">
                     <div class="slider-header">
                         <label for="pixelate">🔲 Pixelate</label>
-                        <span id="pixelateVal" class="slider-value">1x</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="pixelateVal" class="slider-value">1x</span>
+                            <button class="slider-reset" data-slider="pixelate" data-default="1">↺</button>
+                        </div>
                     </div>
                     <input type="range" id="pixelate" min="1" max="20" value="1" step="1">
                 </div>
@@ -92,7 +105,10 @@
                 <div class="slider-card">
                     <div class="slider-header">
                         <label for="stretchX">↔️ Stretch X</label>
-                        <span id="stretchXVal" class="slider-value">1.0</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="stretchXVal" class="slider-value">1.0</span>
+                            <button class="slider-reset" data-slider="stretchX" data-default="1.0">↺</button>
+                        </div>
                     </div>
                     <input type="range" id="stretchX" min="0.5" max="2.0" value="1.0" step="0.05">
                 </div>
@@ -100,19 +116,17 @@
                 <div class="slider-card">
                     <div class="slider-header">
                         <label for="stretchY">↕️ Stretch Y</label>
-                        <span id="stretchYVal" class="slider-value">1.0</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="stretchYVal" class="slider-value">1.0</span>
+                            <button class="slider-reset" data-slider="stretchY" data-default="1.0">↺</button>
+                        </div>
                     </div>
                     <input type="range" id="stretchY" min="0.5" max="2.0" value="1.0" step="0.05">
                 </div>
 
-                <!-- subtle hint text -->
-                <div class="tuning-hint">
-                    ⚡ Tweak sliders → hit <strong>✨ Apply filters</strong> to preview.<br>
-                    <strong>🎮 Generate map</strong> creates tile-ready clustering.
-                </div>
+                
             </div>
 
-            <!-- additional charm: Brawl-style decor -->
             <div class="brawl-charms">
                 <span class="charm">⚡</span>
                 <span class="charm">🎯</span>
