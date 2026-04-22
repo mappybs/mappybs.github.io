@@ -62,9 +62,69 @@
             </div>
         </div>
 
-        <!-- RIGHT: now empty column -->
-        <div class="right-col">
-            <!-- removed adjust & refine section -->
+        <!-- RIGHT: hidden tuning panel (kept for JS compatibility) -->
+        <div class="right-col" style="display:none;">
+            <div class="tuning-panel">
+                <h3 class="panel-title">
+                    <span>🎚️ adjust & refine</span>
+                    <span class="panel-arrow">▼</span>
+                </h3>
+
+                <div class="slider-card">
+                    <div class="slider-header">
+                        <label for="brightness">🔆 Brightness</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="brightVal" class="slider-value">0%</span>
+                            <button class="slider-reset" data-slider="brightness" data-default="0">↺</button>
+                        </div>
+                    </div>
+                    <input type="range" id="brightness" min="-100" max="100" value="0" step="1">
+                </div>
+
+                <div class="slider-card">
+                    <div class="slider-header">
+                        <label for="contrast">◑ Contrast</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="contrastVal" class="slider-value">0%</span>
+                            <button class="slider-reset" data-slider="contrast" data-default="0">↺</button>
+                        </div>
+                    </div>
+                    <input type="range" id="contrast" min="-100" max="100" value="0" step="1">
+                </div>
+
+                <div class="slider-card">
+                    <div class="slider-header">
+                        <label for="pixelate">🔲 Pixelate</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="pixelateVal" class="slider-value">1x</span>
+                            <button class="slider-reset" data-slider="pixelate" data-default="1">↺</button>
+                        </div>
+                    </div>
+                    <input type="range" id="pixelate" min="1" max="20" value="1" step="1">
+                </div>
+
+                <div class="slider-card">
+                    <div class="slider-header">
+                        <label for="stretchX">↔️ Stretch X</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="stretchXVal" class="slider-value">1.0</span>
+                            <button class="slider-reset" data-slider="stretchX" data-default="1.0">↺</button>
+                        </div>
+                    </div>
+                    <input type="range" id="stretchX" min="0.5" max="2.0" value="1.0" step="0.05">
+                </div>
+
+                <div class="slider-card">
+                    <div class="slider-header">
+                        <label for="stretchY">↕️ Stretch Y</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <span id="stretchYVal" class="slider-value">1.0</span>
+                            <button class="slider-reset" data-slider="stretchY" data-default="1.0">↺</button>
+                        </div>
+                    </div>
+                    <input type="range" id="stretchY" min="0.5" max="2.0" value="1.0" step="0.05">
+                </div>
+            </div>
         </div>
     </div>
 
