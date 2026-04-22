@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MappyBS - Brawl Stars Map Maker</title>
+    <title>MappyBS · Brawl Stars Map Maker</title>
+    <!-- Google Font: Lilita One + bold fallback -->
+    <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
     <!-- polished external styles -->
     <link rel="stylesheet" href="styles.css">
     <!-- background removal library (UMD) -->
@@ -13,9 +15,10 @@
 <div class="app">
     <header class="app-header">
         <h1>
-            <span class="title-icon">⚡</span>
+            <!-- logo image replaces old spark icon -->
+            <img class="title-logo" src="https://i.ibb.co/jkDnyBs0/Untitled862-20260421235849.png" alt="MappyBS logo">
             MappyBS
-            <span class="title-badge">Brawl Stars Map Maker from Image</span>
+            <span class="title-badge">Map Maker · from image</span>
         </h1>
         <div class="header-underline"></div>
     </header>
@@ -23,12 +26,12 @@
     <div class="main-panel">
         <!-- LEFT: canvas + all action buttons -->
         <div class="left-col">
-            <div class="preview-card">
+            <div class="preview-card glass-panel">
                 <div class="canvas-wrapper">
                     <canvas id="previewCanvas" width="400" height="400"></canvas>
                 </div>
 
-                <!-- BUTTON BAR — realtime, no "apply filters" button -->
+                <!-- BUTTON BAR — realtime, "remove bg" removed -->
                 <div class="action-bar">
                     <label for="fileInput" class="btn btn-upload">
                         <span class="btn-icon">📁</span> Upload
@@ -39,9 +42,8 @@
                         <button class="btn btn-secondary" id="resetImageBtn">
                             <span class="btn-icon">⟲</span> Reset
                         </button>
-                        <button class="btn btn-accent" id="removeBgBtn">
-                            <span class="btn-icon">✂️</span> Remove BG
-                        </button>
+                        <!-- REMOVE BG BUTTON REMOVED (as requested) -->
+                        <!-- <button class="btn btn-accent" id="removeBgBtn"> ... </button> -->
                         <button class="btn btn-secondary" id="undoBtn">
                             <span class="btn-icon">↩️</span> Undo
                         </button>
@@ -55,42 +57,21 @@
                 </div>
 
                 <!-- image info / stats -->
-                <div id="imageInfo" class="image-stats">
-                    <span class="stat-badge">📌 No image loaded — upload or use default stickman</span>
+                <div id="imageInfo" class="image-stats glass-badge">
+                    <span class="stat-badge">📌 No image — upload or use default stickman</span>
                 </div>
             </div>
         </div>
 
-        <!-- RIGHT: sliders & tuning panel (with reset buttons) -->
+        <!-- RIGHT: sliders & tuning panel (brightness/contrast removed) -->
         <div class="right-col">
-            <div class="tuning-panel">
+            <div class="tuning-panel glass-panel">
                 <h3 class="panel-title">
-                    <span>🎚️ adjust & refine</span>
+                    <span>refine & tune</span>
                     <span class="panel-arrow">▼</span>
                 </h3>
 
-                <div class="slider-card">
-                    <div class="slider-header">
-                        <label for="brightness">🔆 Brightness</label>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <span id="brightVal" class="slider-value">0%</span>
-                            <button class="slider-reset" data-slider="brightness" data-default="0">↺</button>
-                        </div>
-                    </div>
-                    <input type="range" id="brightness" min="-100" max="100" value="0" step="1">
-                </div>
-
-                <div class="slider-card">
-                    <div class="slider-header">
-                        <label for="contrast">◑ Contrast</label>
-                        <div style="display: flex; gap: 8px; align-items: center;">
-                            <span id="contrastVal" class="slider-value">0%</span>
-                            <button class="slider-reset" data-slider="contrast" data-default="0">↺</button>
-                        </div>
-                    </div>
-                    <input type="range" id="contrast" min="-100" max="100" value="0" step="1">
-                </div>
-
+                <!-- Pixelate slider -->
                 <div class="slider-card">
                     <div class="slider-header">
                         <label for="pixelate">🔲 Pixelate</label>
@@ -102,6 +83,7 @@
                     <input type="range" id="pixelate" min="1" max="20" value="1" step="1">
                 </div>
 
+                <!-- Stretch X -->
                 <div class="slider-card">
                     <div class="slider-header">
                         <label for="stretchX">↔️ Stretch X</label>
@@ -113,6 +95,7 @@
                     <input type="range" id="stretchX" min="0.5" max="2.0" value="1.0" step="0.05">
                 </div>
 
+                <!-- Stretch Y -->
                 <div class="slider-card">
                     <div class="slider-header">
                         <label for="stretchY">↕️ Stretch Y</label>
@@ -124,14 +107,11 @@
                     <input type="range" id="stretchY" min="0.5" max="2.0" value="1.0" step="0.05">
                 </div>
 
+                <!-- subtle hint: sliders are live -->
                 
             </div>
 
-            <div class="brawl-charms">
-                <span class="charm">⚡</span>
-                <span class="charm">🎯</span>
-                <span class="charm">💎</span>
-            </div>
+           
         </div>
     </div>
 
