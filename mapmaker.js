@@ -61,6 +61,21 @@
     let assetImages = {};
     let assetsLoaded = false;
     let generatedMapBlob = null;
+    let lastOutCanvas = null; // reference to the final high-res canvas for reliable downloads
+    // animation recording state
+    let animationBlob = null;
+    let _recorder = null;
+    let _recordedChunks = [];
+    let _isRecording = false;
+    let _animationInProgress = false;
+
+    // spinner for "generating" state
+    const GENERATE_DELAY_MS = 4000; // 3-5s delay (4s chosen)
+    const SPINNER_URL = 'https://i.ibb.co/4Zk1GwVq/Untitled862-20260422184215.png';
+    let _spinnerImg = null;
+    let _spinnerRaf = null;
+    let _spinnerStart = 0;
+    let _spinnerAngle = 0;
     
     // history for undo (store ImageData snapshots)
     const historyStack = [];
@@ -83,6 +98,7 @@
     const imageInfo = document.getElementById('imageInfo');
     const generateBtn = document.getElementById('generateMapBtn');
     const downloadBtn = document.getElementById('downloadMapBtn');
+    const downloadAnimBtn = document.getElementById('downloadAnimBtn');
     const resetBtn = document.getElementById('resetImageBtn');
     const removeBgBtn = document.getElementById('removeBgBtn');
     const undoBtn = document.getElementById('undoBtn');
@@ -161,7 +177,8 @@
         
         // show on canvas
         ctx.putImageData(filteredImageData, 0, 0);
-        imageInfo.textContent = `📐 ${canvas.width}x${canvas.height} · filters active`;
+        // hide the inline filters size/status info to keep the UI cleaner
+        imageInfo.textContent = '';
     }
 
     // debounced version for sliders
@@ -177,17 +194,47 @@
         }, 30);
     }
 
-    // set baseImage and reapply filters
+    // set baseImage and reapply filters — fit source into a 496x496 "preview square" with contain scaling
     function setBaseImage(img) {
-        baseImage = img;
-        // clear history and push initial state
-        historyStack.length = 0;
-        applyFilters();
-        if (filteredImageData) pushHistory();
-        undoBtn.disabled = true;
+        // create an offscreen fit-canvas sized to the generated preview target (496)
+        const TARGET = 496;
+        const fitCanvas = document.createElement('canvas');
+        fitCanvas.width = TARGET;
+        fitCanvas.height = TARGET;
+        const fctx = fitCanvas.getContext('2d');
+
+        // fill with transparent background so small images are visible against preview background
+        fctx.clearRect(0, 0, TARGET, TARGET);
+
+        const srcW = img.width;
+        const srcH = img.height;
+        // compute contain scale (no cropping), scale up small images to better fill the preview
+        const scale = Math.min(TARGET / srcW, TARGET / srcH);
+        const drawW = Math.round(srcW * scale);
+        const drawH = Math.round(srcH * scale);
+        const offsetX = Math.round((TARGET - drawW) / 2);
+        const offsetY = Math.round((TARGET - drawH) / 2);
+
+        // draw the source into the fit canvas (centered)
+        fctx.imageSmoothingEnabled = true;
+        fctx.drawImage(img, 0, 0, srcW, srcH, offsetX, offsetY, drawW, drawH);
+
+        // create an Image from the fitCanvas and use that as baseImage so filters operate on the fixed square
+        const fitImg = new Image();
+        fitImg.crossOrigin = 'Anonymous';
+        fitImg.src = fitCanvas.toDataURL('image/png');
+
+        fitImg.onload = () => {
+            baseImage = fitImg;
+            // clear history and push initial state
+            historyStack.length = 0;
+            applyFilters();
+            if (filteredImageData) pushHistory();
+            undoBtn.disabled = true;
+        };
     }
 
-    // load default stickman
+    // load default stickman (drawn into the same 496x496 fit behavior via setBaseImage)
     function createStickmanImage() {
         const c = document.createElement('canvas'); c.width = 200; c.height = 200;
         const cx = c.getContext('2d');
@@ -206,12 +253,18 @@
         return c;
     }
 
+    // track whether the current source image came from a user upload
+    let lastWasUpload = false;
+    // lock generation after producing a map from a user-uploaded image; unlocked only on a new upload
+    let generateLocked = false;
+
     async function loadDefaultImage() {
         const defCanvas = createStickmanImage();
         const img = new Image();
         img.src = defCanvas.toDataURL('image/png');
         await new Promise(r => { img.onload = r; });
         originalImage = img;
+        lastWasUpload = false; // default image is not a user upload
         setBaseImage(img);
     }
 
@@ -251,7 +304,6 @@
             return;
         }
         removeBgBtn.disabled = true;
-        removeBgBtn.textContent = '⏳ Removing...';
         imageInfo.textContent = '✂️ Removing background... (may take a moment)';
         
         try {
@@ -285,7 +337,6 @@
             imageInfo.textContent = '❌ Background removal failed.';
         } finally {
             removeBgBtn.disabled = false;
-            removeBgBtn.textContent = '✂️ Remove BG';
         }
     }
 
@@ -316,13 +367,96 @@
     }
 
     // ---------- map generation (uses filteredImageData) ----------
-    async function generateMap() {
+    // show rotating spinner centered on preview canvas with text, returns a promise resolved after durationMs
+    function _ensureSpinnerLoaded() {
+        if (_spinnerImg) return Promise.resolve();
+        return new Promise((res) => {
+            _spinnerImg = new Image();
+            _spinnerImg.crossOrigin = 'Anonymous';
+            _spinnerImg.onload = () => res();
+            _spinnerImg.onerror = () => res();
+            _spinnerImg.src = SPINNER_URL;
+        });
+    }
+
+    function _drawGeneratingFrame(ts) {
+        if (!_spinnerStart) _spinnerStart = ts;
+        const elapsed = ts - _spinnerStart;
+        // rotate slowly: full rotation every ~2.8s
+        _spinnerAngle = (elapsed / 2800) * (Math.PI * 2);
+
+        // clear canvas and draw spinner centered
+        const w = canvas.width = 496;
+        const h = canvas.height = 496;
+        ctx.clearRect(0,0,w,h);
+        ctx.save();
+        // dark backdrop
+        ctx.fillStyle = 'rgba(12,10,14,0.6)';
+        ctx.fillRect(0,0,w,h);
+
+        const img = _spinnerImg;
+        const size = Math.min(160, Math.floor(w * 0.32));
+        const cx = w/2, cy = h/2 - 24;
+
+        if (img && img.width) {
+            ctx.translate(cx, cy);
+            ctx.rotate(_spinnerAngle);
+            ctx.drawImage(img, -size/2, -size/2, size, size);
+            ctx.rotate(-_spinnerAngle);
+            ctx.translate(-cx, -cy);
+        } else {
+            // fallback: simple rotating rect
+            ctx.translate(cx, cy);
+            ctx.rotate(_spinnerAngle);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(-size/6, -size/6, size/3, size/3);
+            ctx.rotate(-_spinnerAngle);
+            ctx.translate(-cx, -cy);
+        }
+
+        // text below spinner
+        ctx.font = '28px "Lilita One", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText('Generating map...', w/2, h/2 + 72);
+        ctx.restore();
+
+        _spinnerRaf = requestAnimationFrame(_drawGeneratingFrame);
+    }
+
+    function _startGeneratingVisual() {
+        _spinnerStart = 0;
+        _spinnerAngle = 0;
+        _spinnerRaf = requestAnimationFrame(_drawGeneratingFrame);
+    }
+
+    function _stopGeneratingVisual() {
+        if (_spinnerRaf) { cancelAnimationFrame(_spinnerRaf); _spinnerRaf = null; }
+        _spinnerStart = 0;
+    }
+
+    async function generateMap({recordAnimation = false} = {}) {
+        // prevent starting another generation if locked (after a user-upload generation)
+        if (generateLocked) return;
         if (!assetsLoaded) await loadAssets();
         if (!filteredImageData) { alert('No image. Upload or apply filters.'); return; }
-        
+
+        // as soon as generation starts disable the button; if the source was a user upload,
+        // lock generation so it stays disabled until a new upload occurs
         generateBtn.disabled = true;
-        generateBtn.textContent = 'Generating...';
-        
+        downloadBtn.disabled = true;
+        generateLocked = true;
+
+        // ensure spinner image loaded and show the visual for the configured delay
+        await _ensureSpinnerLoaded();
+        _startGeneratingVisual();
+
+        // wait the visual delay before heavy work (UI-only)
+        await new Promise(res => setTimeout(res, GENERATE_DELAY_MS));
+
+        // stop spinner and proceed with actual generation (rest of original implementation)
+        _stopGeneratingVisual();
+
         const srcCanvas = document.createElement('canvas');
         srcCanvas.width = filteredImageData.width;
         srcCanvas.height = filteredImageData.height;
@@ -474,6 +608,7 @@
             }
         }
         
+        // Prepare final static canvas (outCanvas) but if animation recording was requested we'll animate tile-by-tile
         const outCanvas = document.createElement('canvas'); outCanvas.width = outCanvas.height = FINAL_SIZE;
         const outCtx = outCanvas.getContext('2d');
         outCtx.fillStyle = `rgb(${BORDER_COLOR})`; outCtx.fillRect(0,0,FINAL_SIZE,FINAL_SIZE);
@@ -484,40 +619,206 @@
                 outCtx.fillRect((x+1)*TILE_SIZE, (y+1)*TILE_SIZE, TILE_SIZE, TILE_SIZE);
             }
         }
+        
+        // If no animation requested: draw all tiles immediately and export blob for static download
+        if (!recordAnimation) {
+            for (let y=0; y<60; y++) {
+                for (let x=0; x<60; x++) {
+                    if (waterGrid[y][x]) {
+                        outCtx.fillStyle = `rgb(${WATER_FILL})`;
+                        outCtx.fillRect((x+1)*TILE_SIZE, (y+1)*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        const hasTop = y>0 && waterGrid[y-1][x], hasBottom = y<59 && waterGrid[y+1][x], hasLeft = x>0 && waterGrid[y][x-1], hasRight = x<59 && waterGrid[y][x+1];
+                        outCtx.fillStyle = `rgb(${WATER_BORDER3})`;
+                        if (!hasTop) outCtx.fillRect((x+1)*TILE_SIZE, (y+1)*TILE_SIZE, TILE_SIZE, 2);
+                        if (!hasBottom) outCtx.fillRect((x+1)*TILE_SIZE, (y+2)*TILE_SIZE-2, TILE_SIZE, 2);
+                        if (!hasLeft) outCtx.fillRect((x+1)*TILE_SIZE, (y+1)*TILE_SIZE, 2, TILE_SIZE);
+                        if (!hasRight) outCtx.fillRect((x+2)*TILE_SIZE-2, (y+1)*TILE_SIZE, 2, TILE_SIZE);
+                    }
+                }
+            }
+            for (let y=0; y<60; y++) {
+                for (let x=0; x<60; x++) {
+                    const cell = finalGrid[y][x]; if (!cell || cell === 'water') continue;
+                    const asset = assetImages[cell]; if (!asset) continue;
+                    const px = (x+1)*TILE_SIZE, py = (y+1)*TILE_SIZE;
+                    if (flat_1x1.has(cell)) outCtx.drawImage(asset, px, py, TILE_SIZE, TILE_SIZE);
+                    else if (tall_1x1.has(cell) || cell.includes('fence')) outCtx.drawImage(asset, px, py-16, TILE_SIZE, 48);
+                    else outCtx.drawImage(asset, px, py, TILE_SIZE, TILE_SIZE);
+                }
+            }
+            // update preview ONCE with fixed size (do not resize per-frame)
+            canvas.width = 496; canvas.height = 496;
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(outCanvas, 0,0,496,496);
+            previewImageData = ctx.getImageData(0,0,496,496);
+            // keep a reference to the final high-res canvas for reliable download
+            lastOutCanvas = outCanvas;
+            outCanvas.toBlob(blob => { generatedMapBlob = blob; downloadBtn.disabled = false; });
+    
+            // lock generator after a generation — it will only be unlocked when the user uploads a new image
+            generateLocked = true;
+            generateBtn.disabled = true;
+    
+            imageInfo.textContent = '';
+            return;
+        }
+    
+        // ----- Animation + MediaRecorder flow -----
+        // High-res anim canvas (full detail) - never resized during animation
+        const animCanvas = document.createElement('canvas');
+        animCanvas.width = FINAL_SIZE;
+        animCanvas.height = FINAL_SIZE;
+        const animCtx = animCanvas.getContext('2d');
+    
+        // Draw background (border + tile bases) once onto animCanvas
+        animCtx.fillStyle = `rgb(${BORDER_COLOR})`; animCtx.fillRect(0,0,FINAL_SIZE,FINAL_SIZE);
+        for (let y=0; y<60; y++) {
+            for (let x=0; x<60; x++) {
+                const isDark = (x+y)%2 === 0;
+                animCtx.fillStyle = isDark ? `rgb(${DARK_BG})` : `rgb(${LIGHT_BG})`;
+                animCtx.fillRect((x+1)*TILE_SIZE, (y+1)*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+        }
+    
+        // Create a smaller recording canvas (used by MediaRecorder) to avoid encoding huge frames
+        // Prefer 1024x1024 or cap to 1280 if FINAL_SIZE larger
+        const RECORD_SIZE = Math.min(1280, Math.max(1024, Math.floor(FINAL_SIZE * 0.5)));
+        const recordCanvas = document.createElement('canvas');
+        recordCanvas.width = RECORD_SIZE;
+        recordCanvas.height = RECORD_SIZE;
+        const recordCtx = recordCanvas.getContext('2d');
+    
+        // Maintain a fixed preview canvas size (do not change inside loop)
+        canvas.width = 496; canvas.height = 496;
+        ctx.imageSmoothingEnabled = false;
+    
+        // precompute tileList (scanline order) once
+        const tileList = [];
+        for (let y=0; y<60; y++) {
+            for (let x=0; x<60; x++) {
+                const cell = finalGrid[y][x];
+                if (waterGrid[y][x]) tileList.push({type:'water', x, y});
+                else if (cell) tileList.push({type:'asset', name:cell, x, y});
+                else tileList.push({type:'empty', x, y});
+            }
+        }
+    
+        // draw water/backgrounds for final outCanvas concurrently (so static export still works)
+        const outCanvasFinal = document.createElement('canvas'); outCanvasFinal.width = outCanvasFinal.height = FINAL_SIZE;
+        const outCtxFinal = outCanvasFinal.getContext('2d');
+        outCtxFinal.drawImage(animCanvas, 0, 0); // copy base
         for (let y=0; y<60; y++) {
             for (let x=0; x<60; x++) {
                 if (waterGrid[y][x]) {
-                    outCtx.fillStyle = `rgb(${WATER_FILL})`;
-                    outCtx.fillRect((x+1)*TILE_SIZE, (y+1)*TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    outCtxFinal.fillStyle = `rgb(${WATER_FILL})`;
+                    outCtxFinal.fillRect((x+1)*TILE_SIZE, (y+1)*TILE_SIZE, TILE_SIZE, TILE_SIZE);
                     const hasTop = y>0 && waterGrid[y-1][x], hasBottom = y<59 && waterGrid[y+1][x], hasLeft = x>0 && waterGrid[y][x-1], hasRight = x<59 && waterGrid[y][x+1];
-                    outCtx.fillStyle = `rgb(${WATER_BORDER3})`;
-                    if (!hasTop) outCtx.fillRect((x+1)*TILE_SIZE, (y+1)*TILE_SIZE, TILE_SIZE, 2);
-                    if (!hasBottom) outCtx.fillRect((x+1)*TILE_SIZE, (y+2)*TILE_SIZE-2, TILE_SIZE, 2);
-                    if (!hasLeft) outCtx.fillRect((x+1)*TILE_SIZE, (y+1)*TILE_SIZE, 2, TILE_SIZE);
-                    if (!hasRight) outCtx.fillRect((x+2)*TILE_SIZE-2, (y+1)*TILE_SIZE, 2, TILE_SIZE);
+                    outCtxFinal.fillStyle = `rgb(${WATER_BORDER3})`;
+                    if (!hasTop) outCtxFinal.fillRect((x+1)*TILE_SIZE, (y+1)*TILE_SIZE, TILE_SIZE, 2);
+                    if (!hasBottom) outCtxFinal.fillRect((x+1)*TILE_SIZE, (y+2)*TILE_SIZE-2, TILE_SIZE, 2);
+                    if (!hasLeft) outCtxFinal.fillRect((x+1)*TILE_SIZE, (y+1)*TILE_SIZE, 2, TILE_SIZE);
+                    if (!hasRight) outCtxFinal.fillRect((x+2)*TILE_SIZE-2, (y+1)*TILE_SIZE, 2, TILE_SIZE);
                 }
             }
         }
-        for (let y=0; y<60; y++) {
-            for (let x=0; x<60; x++) {
-                const cell = finalGrid[y][x]; if (!cell || cell === 'water') continue;
-                const asset = assetImages[cell]; if (!asset) continue;
-                const px = (x+1)*TILE_SIZE, py = (y+1)*TILE_SIZE;
-                if (flat_1x1.has(cell)) outCtx.drawImage(asset, px, py, TILE_SIZE, TILE_SIZE);
-                else if (tall_1x1.has(cell) || cell.includes('fence')) outCtx.drawImage(asset, px, py-16, TILE_SIZE, 48);
-                else outCtx.drawImage(asset, px, py, TILE_SIZE, TILE_SIZE);
+    
+        // Prepare MediaRecorder using recordCanvas stream (smaller)
+        const stream = recordCanvas.captureStream(20); // 20fps for stability
+        _recordedChunks = [];
+        try {
+            _recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+        } catch (e) {
+            _recorder = new MediaRecorder(stream);
+        }
+        _recorder.ondataavailable = (e) => { if (e.data && e.data.size) _recordedChunks.push(e.data); };
+        _recorder.onstop = () => {
+            animationBlob = new Blob(_recordedChunks, { type: "video/webm" });
+            downloadAnimBtn.disabled = false;
+            _isRecording = false;
+            _animationInProgress = false;
+            // final preview: draw full animCanvas scaled down once
+            ctx.drawImage(animCanvas, 0,0,496,496);
+        };
+    
+        // Start recording AFTER canvases are ready
+        _recorder.start();
+        _isRecording = true;
+        _animationInProgress = true;
+        downloadAnimBtn.disabled = true;
+    
+        // animation loop will only draw a small batch of tiles per frame (5) to limit work
+        const TOTAL_DURATION_MS = 8000;
+        const totalSteps = tileList.length;
+        const startTime = performance.now();
+        const BATCH = 5; // 5 tiles per frame
+        let currentStep = 0;
+    
+        function drawTileToAnim(step) {
+            const px = (step.x + 1) * TILE_SIZE;
+            const py = (step.y + 1) * TILE_SIZE;
+            if (step.type === 'water') {
+                animCtx.fillStyle = `rgb(${WATER_FILL})`;
+                animCtx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                const y = step.y, x = step.x;
+                const hasTop = y>0 && waterGrid[y-1][x], hasBottom = y<59 && waterGrid[y+1][x], hasLeft = x>0 && waterGrid[y][x-1], hasRight = x<59 && waterGrid[y][x+1];
+                animCtx.fillStyle = `rgb(${WATER_BORDER3})`;
+                if (!hasTop) animCtx.fillRect(px, py, TILE_SIZE, 2);
+                if (!hasBottom) animCtx.fillRect(px, py + TILE_SIZE - 2, TILE_SIZE, 2);
+                if (!hasLeft) animCtx.fillRect(px, py, 2, TILE_SIZE);
+                if (!hasRight) animCtx.fillRect(px + TILE_SIZE - 2, py, 2, TILE_SIZE);
+            } else if (step.type === 'asset') {
+                const asset = assetImages[step.name];
+                if (!asset) return;
+                if (flat_1x1.has(step.name)) animCtx.drawImage(asset, px, py, TILE_SIZE, TILE_SIZE);
+                else if (tall_1x1.has(step.name) || step.name.includes('fence')) animCtx.drawImage(asset, px, py - 16, TILE_SIZE, 48);
+                else animCtx.drawImage(asset, px, py, TILE_SIZE, TILE_SIZE);
             }
         }
-        
-        canvas.width = 496; canvas.height = 496;
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(outCanvas, 0,0,496,496);
-        previewImageData = ctx.getImageData(0,0,496,496);
-        
-        outCanvas.toBlob(blob => { generatedMapBlob = blob; downloadBtn.disabled = false; });
-        
-        generateBtn.disabled = false; generateBtn.textContent = '🎮 Generate map';
-        imageInfo.textContent = '🗺️ Map generated! Download ready.';
+    
+        function frame(now) {
+            // draw a bounded number of tiles per frame
+            let drawn = 0;
+            while (currentStep < totalSteps && drawn < BATCH) {
+                drawTileToAnim(tileList[currentStep]);
+                currentStep++;
+                drawn++;
+            }
+    
+            // update preview canvas ONCE per frame (no resizing)
+            ctx.drawImage(animCanvas, 0, 0, 496, 496);
+    
+            // also update record canvas by scaling animCanvas down (cheap single draw)
+            recordCtx.clearRect(0,0,recordCanvas.width, recordCanvas.height);
+            recordCtx.drawImage(animCanvas, 0, 0, recordCanvas.width, recordCanvas.height);
+    
+            // continue or finish
+            if (currentStep < totalSteps) {
+                requestAnimationFrame(frame);
+            } else {
+                // ensure outCanvas final composition includes all assets (draw into outCtxFinal so outCanvasFinal is complete)
+                for (let y=0; y<60; y++) {
+                    for (let x=0; x<60; x++) {
+                        const cell = finalGrid[y][x]; if (!cell || cell === 'water') continue;
+                        const asset = assetImages[cell]; if (!asset) continue;
+                        const px = (x+1)*TILE_SIZE, py = (y+1)*TILE_SIZE;
+                        if (flat_1x1.has(cell)) outCtxFinal.drawImage(asset, px, py, TILE_SIZE, TILE_SIZE);
+                        else if (tall_1x1.has(cell) || cell.includes('fence')) outCtxFinal.drawImage(asset, px, py-16, TILE_SIZE, 48);
+                        else outCtxFinal.drawImage(asset, px, py, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+                // keep a reference to the final high-res canvas for reliable download
+                lastOutCanvas = outCanvasFinal;
+                outCanvasFinal.toBlob(blob => { generatedMapBlob = blob; downloadBtn.disabled = false; });
+    
+                // stop recorder (finalize)
+                try { _recorder.stop(); } catch(e) { /* ignore */ }
+            }
+        }
+    
+        // kick off the animation
+        requestAnimationFrame(frame);
+    
+        imageInfo.textContent = '';
     }
 
     // ---------- event listeners ----------
@@ -526,7 +827,10 @@
         const img = new Image();
         img.onload = () => {
             originalImage = img;
+            lastWasUpload = true;           // mark that current source is a user upload
+            generateLocked = false;         // unlocking generator because a new upload occurred
             setBaseImage(img);
+            generateBtn.disabled = false;   // allow generating for the newly uploaded image
         };
         img.src = URL.createObjectURL(file);
     });
@@ -558,13 +862,47 @@
     
     removeBgBtn.addEventListener('click', removeBackground);
     undoBtn.addEventListener('click', undo);
-    generateBtn.addEventListener('click', generateMap);
+    // generate: start generation for both full image (in-memory) and animation
+    generateBtn.addEventListener('click', () => generateMap({recordAnimation: true}));
     downloadBtn.addEventListener('click', () => {
+        // Prefer to generate the blob from the final high-res canvas if available to ensure full composition
+        if (lastOutCanvas) {
+            lastOutCanvas.toBlob(blob => {
+                if (!blob) {
+                    alert('Export failed.');
+                    return;
+                }
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'brawl_map.png';
+                a.click();
+            });
+            return;
+        }
+        // fallback to previously captured blob
         if (generatedMapBlob) {
             const a = document.createElement('a');
             a.href = URL.createObjectURL(generatedMapBlob);
             a.download = 'brawl_map.png';
             a.click();
+        } else {
+            alert('No map available to download yet.');
+        }
+    });
+
+
+
+    // Download animation button: if recording finished -> download; otherwise show message
+    downloadAnimBtn.addEventListener('click', () => {
+        if (animationBlob) {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(animationBlob);
+            a.download = 'brawl_build.webm';
+            a.click();
+        } else if (_animationInProgress) {
+            alert('Generating animation — please wait until the build completes.');
+        } else {
+            alert('No animation available. Build one first.');
         }
     });
     
@@ -573,6 +911,25 @@
         await loadAssets();
         await loadDefaultImage();
         updateSliderLabels();
+    })();
+
+    // Prevent pinch-zoom / gesturezoom events (most browsers)
+    document.addEventListener('gesturestart', function(e) { e.preventDefault(); });
+
+    // Prevent double-tap-to-zoom: detect quick successive touchend and prevent the second tap's default zoom
+    (function() {
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (e) {
+            const now = Date.now();
+            if (now - lastTouchEnd <= 300) {
+                e.preventDefault();
+            }
+            lastTouchEnd = now;
+        }, { passive: false });
+
+        // Ensure smooth momentum scrolling on iOS
+        document.documentElement.style.webkitOverflowScrolling = 'touch';
+        document.body.style.webkitOverflowScrolling = 'touch';
     })();
 
 })();
