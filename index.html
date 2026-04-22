@@ -2,7 +2,34 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#161021">
+  
+
+
+<meta name="description" content="Turn images into Brawl Stars maps in seconds!">
+
+<meta name="keywords" content="brawl stars, map maker, mappybs, mappy, bs, haru, haruyt600">
+
+<meta name="author" content="HaruYT600">
+  <meta property="og:title" content="MappyBS - Images to Brawl Maps">
+
+<meta property="og:description" content="Turn images into Brawl Stars maps in seconds!">
+
+<meta property="og:type" content="website">
+
+<meta property="og:url" content="https://mappybs.github.io">
+
+<meta property="og:image" content="https://i.ibb.co/p6LK1L1g/Untitled862-20260421235849.png">
+
+<meta property="og:site_name" content="MappyBS">
+
+<!-- Favicon -->
+
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="manifest" href="/site.webmanifest">
     <title>MappyBS - Brawl Stars Map Maker</title>
 
     <link rel="stylesheet" href="styles.css">
@@ -16,7 +43,7 @@
 
     <header class="app-header">
         <h1>
-            <span class="title-icon">⚡</span>
+            <img class="title-logo" src="https://i.ibb.co/p6LK1L1g/Untitled862-20260421235849.png" alt="MappyBS logo">
             MappyBS
             <span class="title-badge">Brawl Stars Map Maker from Image</span>
         </h1>
@@ -26,6 +53,7 @@
     <div class="main-panel">
 
         <!-- LEFT -->
+      <!-- why are u looking at ts -->
         <div class="left-col">
             <div class="preview-card">
 
@@ -37,7 +65,7 @@
                 <div class="action-bar">
 
                     <label for="fileInput" class="btn btn-upload">
-                        <span class="btn-icon">📁</span> Upload
+                        <span class="btnn-text">UPLOAD</span>
                     </label>
 
                     <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/bmp" hidden>
@@ -58,11 +86,17 @@
                         </button>
 
                         <button class="btn btn-primary" id="generateMapBtn">
-                            <span class="btn-icon">🎮</span> Generate map
+                            <span class="btn-icon"></span> GENERATE MAP
                         </button>
 
                         <button class="btn btn-success" id="downloadMapBtn" disabled>
-                            <span class="btn-icon">⬇</span> Download
+                            <span class="btn-icon"></span> DOWNLOAD
+                        </button>
+
+                        
+
+                        <button class="btn btn-success" id="downloadAnimBtn" disabled>
+                            <span class="btn-icon"></span> Download Animation
                         </button>
 
                     </div>
@@ -137,8 +171,31 @@
     </div>
 
     <footer class="app-footer">
-        <span>Made with ❤️ by HaruYT600</span>
+        <div class="footer-inner">
+            <div class="footer-left" aria-hidden="false">
+                © <span id="year"></span> HaruYT600. All rights reserved.
+            </div>
+
+            <div class="footer-center">
+                <nav class="footer-nav" aria-label="Social links">
+                    <a href="https://youtube.com/@HaruYT600" target="_blank" rel="noopener" title="YouTube" class="social-link">
+                        <img class="social-icon" src="https://i.ibb.co/pC3wXcL/Untitled864-20260422204814.png" alt="YouTube">
+                    </a>
+                    <a href="https://tiktok.com/@haruyt600" target="_blank" rel="noopener" title="TikTok" class="social-link">
+                        <img class="social-icon" src="https://i.ibb.co/xnmRZ1z/Untitled864-20260422204803.png" alt="TikTok">
+                    </a>
+                    <a href="https://discord.gg/SSFu8DqvkY" target="_blank" rel="noopener" title="Discord" class="social-link">
+                        <img class="social-icon" src="https://i.ibb.co/GQF87T4b/Untitled864-20260422204749.png" alt="Discord">
+                    </a>
+                </nav>
+            </div>
+
+            <div class="footer-right" aria-hidden="true">
+                <!-- reserved for future small meta / social -->
+            </div>
+        </div>
     </footer>
+    <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
 
 </div>
 
