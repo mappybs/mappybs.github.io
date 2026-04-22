@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MappyBS · Brawl Stars Map Maker</title>
-    <!-- Google Font: Lilita One + bold fallback -->
+    <!-- Google Font: Lilita One + fallback -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
     <!-- polished external styles -->
     <link rel="stylesheet" href="styles.css">
@@ -14,12 +16,14 @@
 <body>
 <div class="app">
     <header class="app-header">
-        <h1>
-            <!-- logo image replaces old spark icon -->
-            <img class="title-logo" src="https://i.ibb.co/jkDnyBs0/Untitled862-20260421235849.png" alt="MappyBS logo">
-            MappyBS
-            <span class="title-badge">Map Maker · from image</span>
-        </h1>
+        <div class="header-top">
+            <!-- logo image instead of spark -->
+            <img src="https://i.ibb.co/jkDnyBs0/Untitled862-20260421235849.png" alt="MappyBS logo" class="title-logo">
+            <h1>
+                MappyBS
+                <span class="title-badge">Brawl stars map maker</span>
+            </h1>
+        </div>
         <div class="header-underline"></div>
     </header>
 
@@ -31,7 +35,7 @@
                     <canvas id="previewCanvas" width="400" height="400"></canvas>
                 </div>
 
-                <!-- BUTTON BAR — realtime, "remove bg" removed -->
+                <!-- BUTTON BAR — realtime, no apply filters, remove bg removed -->
                 <div class="action-bar">
                     <label for="fileInput" class="btn btn-upload">
                         <span class="btn-icon">📁</span> Upload
@@ -39,16 +43,15 @@
                     <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/bmp" hidden>
 
                     <div class="btn-group">
-                        <button class="btn btn-secondary" id="resetImageBtn">
+                        <button class="btn" id="resetImageBtn">
                             <span class="btn-icon">⟲</span> Reset
                         </button>
-                        <!-- REMOVE BG BUTTON REMOVED (as requested) -->
-                        <!-- <button class="btn btn-accent" id="removeBgBtn"> ... </button> -->
-                        <button class="btn btn-secondary" id="undoBtn">
+                        <!-- remove bg button removed -->
+                        <button class="btn" id="undoBtn">
                             <span class="btn-icon">↩️</span> Undo
                         </button>
-                        <button class="btn btn-primary" id="generateMapBtn">
-                            <span class="btn-icon">🎮</span> Generate map
+                        <button class="btn btn-generate" id="generateMapBtn">
+                            <span class="btn-icon">🎮</span> Generate
                         </button>
                         <button class="btn btn-success" id="downloadMapBtn" disabled>
                             <span class="btn-icon">⬇</span> Download
@@ -57,7 +60,7 @@
                 </div>
 
                 <!-- image info / stats -->
-                <div id="imageInfo" class="image-stats glass-badge">
+                <div id="imageInfo" class="image-stats glass-chip">
                     <span class="stat-badge">📌 No image — upload or use default stickman</span>
                 </div>
             </div>
@@ -67,12 +70,12 @@
         <div class="right-col">
             <div class="tuning-panel glass-panel">
                 <h3 class="panel-title">
-                    <span>refine & tune</span>
-                    <span class="panel-arrow">▼</span>
+                    <span>🎚️ refine</span>
+                    <span class="panel-arrow">⚡</span>
                 </h3>
 
-                <!-- Pixelate slider -->
-                <div class="slider-card">
+                <!-- pixelate slider -->
+                <div class="slider-card glass-card">
                     <div class="slider-header">
                         <label for="pixelate">🔲 Pixelate</label>
                         <div style="display: flex; gap: 8px; align-items: center;">
@@ -83,8 +86,8 @@
                     <input type="range" id="pixelate" min="1" max="20" value="1" step="1">
                 </div>
 
-                <!-- Stretch X -->
-                <div class="slider-card">
+                <!-- stretch X -->
+                <div class="slider-card glass-card">
                     <div class="slider-header">
                         <label for="stretchX">↔️ Stretch X</label>
                         <div style="display: flex; gap: 8px; align-items: center;">
@@ -95,8 +98,8 @@
                     <input type="range" id="stretchX" min="0.5" max="2.0" value="1.0" step="0.05">
                 </div>
 
-                <!-- Stretch Y -->
-                <div class="slider-card">
+                <!-- stretch Y -->
+                <div class="slider-card glass-card">
                     <div class="slider-header">
                         <label for="stretchY">↕️ Stretch Y</label>
                         <div style="display: flex; gap: 8px; align-items: center;">
@@ -107,16 +110,16 @@
                     <input type="range" id="stretchY" min="0.5" max="2.0" value="1.0" step="0.05">
                 </div>
 
-                <!-- subtle hint: sliders are live -->
+                <!-- subtle hint -->
                 
             </div>
 
-           
+            
         </div>
     </div>
 
     <footer class="app-footer">
-        <span>Made with ❤️ by HaruYT600</span>
+        <span>❤️ by HaruYT600</span>
     </footer>
 </div>
 
