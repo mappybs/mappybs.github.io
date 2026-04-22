@@ -3,39 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MappyBS · Brawl Stars Map Maker</title>
-    <!-- Google Font: Lilita One + fallback -->
+    <title>MappyBS - Brawl Stars Map Maker</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel="stylesheet">
-    <!-- polished external styles -->
     <link rel="stylesheet" href="styles.css">
-    <!-- background removal library (UMD) -->
     <script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal-js@1.4.5/dist/background-removal.umd.min.js"></script>
 </head>
 <body>
-<div class="app">
+<div class="app glass-panel">
     <header class="app-header">
-        <div class="header-top">
-            <!-- logo image instead of spark -->
-            <img src="https://i.ibb.co/jkDnyBs0/Untitled862-20260421235849.png" alt="MappyBS logo" class="title-logo">
-            <h1>
-                MappyBS
-                <span class="title-badge">Brawl stars map maker</span>
-            </h1>
-        </div>
+        <h1>
+            <img src="https://i.ibb.co/jkDnyBs0/Untitled862-20260421235849.png" alt="MappyBS Logo" class="title-icon">
+            MappyBS
+            <span class="title-badge">Brawl Stars Map Maker</span>
+        </h1>
         <div class="header-underline"></div>
     </header>
 
     <div class="main-panel">
-        <!-- LEFT: canvas + all action buttons -->
         <div class="left-col">
             <div class="preview-card glass-panel">
                 <div class="canvas-wrapper">
                     <canvas id="previewCanvas" width="400" height="400"></canvas>
                 </div>
 
-                <!-- BUTTON BAR — realtime, no apply filters, remove bg removed -->
                 <div class="action-bar">
                     <label for="fileInput" class="btn btn-upload">
                         <span class="btn-icon">📁</span> Upload
@@ -43,15 +35,14 @@
                     <input type="file" id="fileInput" accept="image/png, image/jpeg, image/webp, image/bmp" hidden>
 
                     <div class="btn-group">
-                        <button class="btn" id="resetImageBtn">
+                        <button class="btn btn-secondary" id="resetImageBtn">
                             <span class="btn-icon">⟲</span> Reset
                         </button>
-                        <!-- remove bg button removed -->
-                        <button class="btn" id="undoBtn">
+                        <button class="btn btn-secondary" id="undoBtn">
                             <span class="btn-icon">↩️</span> Undo
                         </button>
-                        <button class="btn btn-generate" id="generateMapBtn">
-                            <span class="btn-icon">🎮</span> Generate
+                        <button class="btn btn-primary" id="generateMapBtn">
+                            <span class="btn-icon">🎮</span> Generate map
                         </button>
                         <button class="btn btn-success" id="downloadMapBtn" disabled>
                             <span class="btn-icon">⬇</span> Download
@@ -59,26 +50,23 @@
                     </div>
                 </div>
 
-                <!-- image info / stats -->
-                <div id="imageInfo" class="image-stats glass-chip">
-                    <span class="stat-badge">📌 No image — upload or use default stickman</span>
+                <div id="imageInfo" class="image-stats">
+                    <span class="stat-badge">📌 No image loaded — upload or use default stickman</span>
                 </div>
             </div>
         </div>
 
-        <!-- RIGHT: sliders & tuning panel (brightness/contrast removed) -->
         <div class="right-col">
             <div class="tuning-panel glass-panel">
                 <h3 class="panel-title">
-                    <span>🎚️ refine</span>
-                    <span class="panel-arrow">⚡</span>
+                    <span>🎚️ Adjust & Refine</span>
+                    <span class="panel-arrow">▼</span>
                 </h3>
 
-                <!-- pixelate slider -->
-                <div class="slider-card glass-card">
+                <div class="slider-card glass-panel">
                     <div class="slider-header">
                         <label for="pixelate">🔲 Pixelate</label>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div class="slider-controls">
                             <span id="pixelateVal" class="slider-value">1x</span>
                             <button class="slider-reset" data-slider="pixelate" data-default="1">↺</button>
                         </div>
@@ -86,11 +74,10 @@
                     <input type="range" id="pixelate" min="1" max="20" value="1" step="1">
                 </div>
 
-                <!-- stretch X -->
-                <div class="slider-card glass-card">
+                <div class="slider-card glass-panel">
                     <div class="slider-header">
                         <label for="stretchX">↔️ Stretch X</label>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div class="slider-controls">
                             <span id="stretchXVal" class="slider-value">1.0</span>
                             <button class="slider-reset" data-slider="stretchX" data-default="1.0">↺</button>
                         </div>
@@ -98,28 +85,24 @@
                     <input type="range" id="stretchX" min="0.5" max="2.0" value="1.0" step="0.05">
                 </div>
 
-                <!-- stretch Y -->
-                <div class="slider-card glass-card">
+                <div class="slider-card glass-panel">
                     <div class="slider-header">
                         <label for="stretchY">↕️ Stretch Y</label>
-                        <div style="display: flex; gap: 8px; align-items: center;">
+                        <div class="slider-controls">
                             <span id="stretchYVal" class="slider-value">1.0</span>
                             <button class="slider-reset" data-slider="stretchY" data-default="1.0">↺</button>
                         </div>
                     </div>
                     <input type="range" id="stretchY" min="0.5" max="2.0" value="1.0" step="0.05">
                 </div>
-
-                <!-- subtle hint -->
-                
             </div>
 
-            
+           
         </div>
     </div>
 
     <footer class="app-footer">
-        <span>❤️ by HaruYT600</span>
+        <span>Made with ❤️ by HaruYT600</span>
     </footer>
 </div>
 
