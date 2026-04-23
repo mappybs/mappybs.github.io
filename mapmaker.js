@@ -725,14 +725,35 @@
         // Prepare MediaRecorder using recordCanvas stream (smaller)
         const stream = recordCanvas.captureStream(20); // 20fps for stability
         _recordedChunks = [];
+        // try MP4 first (if browser supports), otherwise fall back to webm
+        let _recorderMime = '';
         try {
-            _recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+            const tryMp4 = 'video/mp4;codecs="avc1.42E01E"';
+            if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(tryMp4)) {
+                _recorderMime = tryMp4;
+                _recorder = new MediaRecorder(stream, { mimeType: _recorderMime });
+            } else {
+                const tryWebm = 'video/webm;codecs=vp9';
+                if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(tryWebm)) {
+                    _recorderMime = tryWebm;
+                    _recorder = new MediaRecorder(stream, { mimeType: _recorderMime });
+                } else {
+                    _recorderMime = 'video/webm';
+                    _recorder = new MediaRecorder(stream, { mimeType: _recorderMime });
+                }
+            }
         } catch (e) {
+            // final fallback: no explicit mimeType
+            _recorderMime = '';
             _recorder = new MediaRecorder(stream);
         }
         _recorder.ondataavailable = (e) => { if (e.data && e.data.size) _recordedChunks.push(e.data); };
         _recorder.onstop = () => {
-            animationBlob = new Blob(_recordedChunks, { type: "video/webm" });
+            // create blob using the chosen mime type if available
+            const blobType = _recorderMime || (_recordedChunks[0] && _recordedChunks[0].type) || 'video/webm';
+            animationBlob = new Blob(_recordedChunks, { type: blobType });
+            // store extension for download convenience
+            animationBlob._preferredExt = blobType.includes('mp4') || blobType.includes('mp4;') ? 'mp4' : (blobType.includes('webm') ? 'webm' : 'webm');
             downloadAnimBtn.disabled = false;
             _isRecording = false;
             _animationInProgress = false;
@@ -824,6 +845,13 @@
     // ---------- event listeners ----------
     fileInput.addEventListener('change', (e) => {
         const file = e.target.files[0]; if (!file) return;
+        // clear previous outputs / disable download buttons to avoid stale downloads
+        generatedMapBlob = null;
+        animationBlob = null;
+        lastOutCanvas = null;
+        downloadBtn.disabled = true;
+        downloadAnimBtn.disabled = true;
+
         const img = new Image();
         img.onload = () => {
             originalImage = img;
@@ -897,7 +925,8 @@
         if (animationBlob) {
             const a = document.createElement('a');
             a.href = URL.createObjectURL(animationBlob);
-            a.download = 'brawl_build.webm';
+            const ext = animationBlob._preferredExt || (animationBlob.type && (animationBlob.type.includes('mp4') ? 'mp4' : (animationBlob.type.includes('webm') ? 'webm' : 'webm'))) || 'webm';
+            a.download = `brawl_build.${ext}`;
             a.click();
         } else if (_animationInProgress) {
             alert('Generating animation — please wait until the build completes.');
